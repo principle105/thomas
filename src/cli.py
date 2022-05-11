@@ -6,9 +6,12 @@ from InquirerPy import inquirer
 from InquirerPy.utils import color_print
 from InquirerPy.validator import EmptyInputValidator
 from pyfiglet import figlet_format
+from yaspin import yaspin
+from yaspin.spinners import Spinners
 
 from constants import MINIMUM_SEND_AMT
-from node import Node
+from p2p import Node
+from tangle import Transaction
 from wallet import Wallet
 
 # Setting up logging
@@ -24,7 +27,7 @@ fmt = logging.Formatter(
     "[{asctime}] [{levelname}]: {message}", "%Y-%m-%d %H:%M:%S", style="{"
 )
 
-
+# Initializing cli
 app = typer.Typer()
 
 
@@ -45,6 +48,10 @@ class Send:
     def regular(text: str):
         color_print([("", text)])
 
+    @staticmethod
+    def spinner(text: str):
+        return yaspin(Spinners.moon, text=text)
+
 
 @app.command()
 def info():
@@ -60,7 +67,6 @@ def wallet():
 
     if not secret:
         secret = None
-        Send.regular("Generating wallet...")
 
     wallet = Wallet(secret=secret)
 
@@ -79,16 +85,27 @@ def start():
         validate=EmptyInputValidator(),
     ).execute()
 
-    node = Node(host=host, port=port)
+    full_node = inquirer.confirm(
+        message="Would you like it to be a full node?", default=False
+    ).execute()
+
+    node = Node(host=host, port=int(port), full_node=full_node)
+
+    Send.success("Node started!")
+
     node.start()
+
+    node.connect_to_node(input("host: "), int(input("port: ")))
 
 
 @app.command()
 def send():
-    address = inquirer.text(
-        message="Your Address:",
+    private_key = inquirer.secret(
+        message="Your Private Key:",
         validate=EmptyInputValidator(),
     ).execute()
+
+    wallet = Wallet(secret=private_key)
 
     receiver = inquirer.text(
         message="Recipient's Address:",
@@ -102,20 +119,29 @@ def send():
     ).execute()
 
     # Create the transaction object
-    ...
+    t = Transaction(sender=wallet.address, receiver=receiver, amt=amt)
+
+    # Signing the transaction
+    t.sign(wallet)
+
+    with Send.spinner("Solving Proof of Work"):
+        t.do_work()
+
+    Send.success("Completed Proof of Work!")
 
     proceed = inquirer.confirm(
         message="Are you sure you want to send this transaction?", default=False
     ).execute()
 
     if proceed:
-        Send.success("Sending transaction...")
+        with Send.spinner("Sending transaction"):
+            # Sending the transaction
+            ...
 
-        # Send the transaction
-        ...
+        Send.success("Transaction successfully sent!")
 
     else:
-        Send.fail("Aborted!")
+        Send.fail("Transaction cancelled!")
 
 
 if __name__ == "__main__":

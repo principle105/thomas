@@ -10,17 +10,17 @@ class Transaction(Signed):
         *,
         sender: str,
         receiver: str,
-        amount: int,
+        amt: int,
         timestamp: float = None,
         nonce: str = None,
-        signature: str = Signed,
+        signature: str = None,
     ):
         super().__init__(signature=signature)
 
         self.sender = sender
         self.receiver = receiver
 
-        self.amount = amount
+        self.amt = amt
 
         if timestamp is None:
             timestamp = time.time()
@@ -31,14 +31,36 @@ class Transaction(Signed):
 
     @property
     def hash(self) -> str:
-        return sha256(self.get_raw_transaction_data().encode()).hexdigest()
+        return sha256(self.raw_transaction_data.encode()).hexdigest()
 
     @property
     def vk(self) -> str:
         return self.sender
 
-    def get_raw_transaction_data(self):
-        return f"{self.sender}{self.receiver}{self.amount}{self.timestamp}{self.nonce}"
+    @property
+    def raw_transaction_data(self):
+        return f"{self.sender}{self.receiver}{self.amt}{self.timestamp}{self.nonce}"
+
+    @property
+    def is_valid(self):
+        ...
+
+    def do_work(self):
+        ...
+
+    def to_dict(self):
+        return {
+            "sender": self.sender,
+            "receiver": self.receiver,
+            "amt": self.amt,
+            "timestamp": self.timestamp,
+            "nonce": self.nonce,
+            "signature": self.signature,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
 
 
 class Message(Transaction):
