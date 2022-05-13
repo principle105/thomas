@@ -101,7 +101,7 @@ class Node(Thread):
         if node in self.nodes_outbound:
             node.stop()
 
-    def message_from_node(self, node, data):
+    def message_from_node(self, node: NodeConnection, data):
         ...
 
     def run(self):
@@ -135,7 +135,6 @@ class Node(Thread):
 
             except socket.timeout:
                 logging.debug("Connection timed out")
-                pass
 
             except Exception as e:
                 raise e
