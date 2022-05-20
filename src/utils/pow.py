@@ -29,5 +29,5 @@ def proof_of_work(msg: str, difficulty: int):
     for nonce in range(MAX_NONCE):
         hash_result = get_hash_result(msg, nonce)
 
-    if is_valid_hash(hash_result, target):
-        return hash_result, nonce
+        if is_valid_hash(hash_result, target):
+            return hash_result, nonce

@@ -4,6 +4,8 @@ import time
 import uuid
 from threading import Event, Thread
 
+from tangle import Tangle
+
 from .node_connection import NodeConnection
 
 
@@ -13,6 +15,7 @@ class Node(Thread):
         *,
         host: str,
         port: int,
+        tangle: Tangle,
         full_node: bool = False,
         max_connections: int = 30,
     ):
@@ -22,6 +25,8 @@ class Node(Thread):
 
         self.host = host
         self.port = port
+
+        self.tangle = tangle
 
         self.id = self.generate_uuid()
 
@@ -140,8 +145,6 @@ class Node(Thread):
                 raise e
 
             time.sleep(0.01)
-
-        logging.info("Nodes stopping...")
 
         for node in self.all_nodes:
             node.stop()

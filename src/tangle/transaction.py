@@ -6,7 +6,7 @@ from utils.pow import proof_of_work
 from .signed import Signed
 
 # TODO: make this adaptive
-DIFFICULTY = 10
+DIFFICULTY = 20
 
 
 class Transaction(Signed):
@@ -35,7 +35,8 @@ class Transaction(Signed):
 
         self.timestamp = timestamp
 
-        self.hash = hash
+        self._hash = hash
+
         self.nonce = nonce
 
         # Hashes of tips
@@ -43,8 +44,8 @@ class Transaction(Signed):
         self.branch = branch
 
     @property
-    def hash(self) -> str:
-        return sha256(self.raw_transaction_data.encode()).hexdigest()
+    def hash(self):
+        return self._hash
 
     @property
     def vk(self) -> str:
@@ -58,11 +59,11 @@ class Transaction(Signed):
     def is_valid(self):
         ...
 
-    def add_tips(self):
-        ...
+    def add_tips(self, tangle):
+        self.trunk, self.branch = tangle.select_tips()
 
     def do_work(self):
-        self.hash, self.nonce = proof_of_work(self.raw_transaction_data, DIFFICULTY)
+        self._hash, self.nonce = proof_of_work(self.raw_transaction_data, DIFFICULTY)
 
     def to_dict(self):
         return {
