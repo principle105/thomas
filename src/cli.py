@@ -110,7 +110,7 @@ def send(tangle, node):
     ).execute()
 
     # Create the transaction object
-    t = Transaction(sender=wallet.address, receiver=receiver, amt=amt)
+    t = Transaction(sender=wallet.address, receiver=receiver, amt=int(amt))
 
     with Send.spinner("Solving Proof of Work"):
         t.do_work()
@@ -122,6 +122,8 @@ def send(tangle, node):
     ).execute()
 
     t.add_tips(tangle)
+
+    tangle.add_transaction(t)
 
     if proceed:
         with Send.spinner("Broadcasting the transaction to network"):
@@ -162,8 +164,7 @@ def start():
         message="Would you like it to be a full node?", default=False
     ).execute()
 
-    # TODO: load from previous state if possible
-    tangle = Tangle()
+    tangle = Tangle.from_save()
 
     node = Node(
         host=host,
@@ -199,6 +200,8 @@ def start():
     Send.fail("Stopping Node...")
 
     node.stop()
+
+    tangle.save()
 
 
 if __name__ == "__main__":

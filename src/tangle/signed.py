@@ -26,4 +26,7 @@ class Signed:
         )
 
     def sign(self, wallet: Wallet):
+        if self.hash is None:
+            raise ValueError("Hash must be defined to sign")
+
         self.signature = b64encode(wallet.sk.sign(self.hash.encode())).decode()

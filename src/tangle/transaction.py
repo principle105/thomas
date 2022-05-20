@@ -1,12 +1,12 @@
 import time
-from hashlib import sha256
 
+from constants import BRANCH_GENESIS_DATA, TRUNK_GENESIS_DATA
 from utils.pow import proof_of_work
 
 from .signed import Signed
 
 # TODO: make this adaptive
-DIFFICULTY = 20
+DIFFICULTY = 16
 
 
 class Transaction(Signed):
@@ -81,3 +81,13 @@ class Transaction(Signed):
     @classmethod
     def from_dict(cls, data: dict):
         return cls(**data)
+
+    @classmethod
+    @property
+    def trunk_genesis(cls):
+        return cls(**TRUNK_GENESIS_DATA)
+
+    @classmethod
+    @property
+    def branch_genesis(cls):
+        return cls(**BRANCH_GENESIS_DATA)
