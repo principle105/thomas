@@ -1,11 +1,13 @@
+import math
 import os
 import pickle
-import random
 
 import networkx as nx
 
 from config import TANGLE_PATH
+from constants import BASE_DIFFICULTY, GAMMA, TIME_WINDOW
 
+from .messages import Message, genesis_msg
 from .transaction import Transaction
 
 
@@ -23,7 +25,8 @@ class TangleState:
 
         self.wallets[t.receiver] = receiver_bal + t.amt
 
-        self.tips.append(t.hash)
+    def add_tip(self, tip: str):
+        self.tips.append(tip)
 
     def remove_tip(self, tip: str):
         self.tips.remove(tip)
@@ -48,46 +51,54 @@ class Tangle:
 
         self.graph = graph
 
-        if self.has_genesis_transactions is False:
-            self.add_genesis_transactions()
+        if self.has_genesis is False:
+            self.add_genesis()
+
+    @property
+    def has_genesis(self):
+        return (
+            len(self.graph.nodes) > 0
+            and self.graph.nodes[0] == Message.genesis_msg.hash
+        )
 
     @property
     def get_balance(self):
         return self.state.get_balance
 
-    @property
-    def has_genesis_transactions(self):
-        return list(self.graph.nodes)[:2] == [
-            Transaction.trunk_genesis.hash,
-            Transaction.branch_genesis.hash,
-        ]
+    def add_genesis(self):
+        self.raw_add_msg(genesis_msg)
 
-    def add_genesis_transactions(self):
-        self.raw_add_transaction(Transaction.trunk_genesis)
-        self.raw_add_transaction(Transaction.branch_genesis)
+    def get_difficulty(self, msg: Message):
+        # Amount of messages in the last time window
+        # TODO: cache messages
+        msg_count = sum(
+            1
+            for mt in self.graph.nodes(data=True)
+            if (b := mt[1]["data"]) == msg.node_id
+            and b.timestamp > msg.timestamp - TIME_WINDOW
+            and b.timestamp < msg.timestamp
+        )
 
-    def is_transaction_verified(self, hash_str: str):
-        return len(self.graph.neighbors(hash_str)) != 0
+        return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
 
-    def select_tips(self):
-        # TODO: implement better tip selection
-        return random.sample(self.state.tips, 2)
+    def get_msg(self, hash_str: str) -> Message:
+        return self.graph.nodes(data=True)[hash_str]["data"]
 
-    def raw_add_transaction(self, t: Transaction):
-        self.graph.add_node(t.hash, data=t)
+    def raw_add_msg(self, msg: Message):
+        self.graph.add_node(msg.hash, data=msg)
 
-        self.state.add_transaction(t)
+        msg.update_state(self)
 
-    def add_transaction(self, t: Transaction):
+    def add_msg(self, msg: Message):
         # Removing the tips from the pool
-        self.state.remove_tips([t.trunk, t.branch])
+        self.state.remove_tips(msg.parents)
 
-        # Adding the transaction as a node
-        self.raw_add_transaction(t)
+        self.state.add_tip(msg.hash)
 
-        # Connecting it to the tip and branch
-        self.graph.add_edge(t.trunk, t.hash)
-        self.graph.add_edge(t.branch, t.hash)
+        self.raw_add_msg(msg)
+
+        for p in msg.parents:
+            self.graph.add_edge(p, msg.hash)
 
     def save(self):
         with open(TANGLE_PATH, "wb") as f:

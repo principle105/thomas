@@ -1,10 +1,11 @@
 import logging
 import socket
 import time
-import uuid
 from threading import Event, Thread
 
 from tangle import Tangle
+from tangle.messages import get_message_from_data
+from wallet import Wallet
 
 from .node_connection import NodeConnection
 
@@ -16,6 +17,7 @@ class Node(Thread):
         host: str,
         port: int,
         tangle: Tangle,
+        wallet: Wallet,
         full_node: bool = False,
         max_connections: int = 30,
     ):
@@ -28,7 +30,7 @@ class Node(Thread):
 
         self.tangle = tangle
 
-        self.id = self.generate_uuid()
+        self.wallet = wallet
 
         # Connections
         self.nodes_inbound = []
@@ -45,8 +47,9 @@ class Node(Thread):
     def all_nodes(self):
         return self.nodes_inbound + self.nodes_outbound
 
-    def generate_uuid(self):
-        return uuid.uuid4().hex
+    @property
+    def id(self):
+        return self.wallet.address
 
     def init_server(self):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -106,8 +109,22 @@ class Node(Thread):
         if node in self.nodes_outbound:
             node.stop()
 
-    def message_from_node(self, node: NodeConnection, data):
-        ...
+    def message_from_node(self, node: NodeConnection, data: dict):
+        msg = get_message_from_data(data)
+
+        is_valid = msg.is_valid(node.tangle)
+
+        if is_valid is False:
+            return
+
+        if node.tangle.get_msg(msg.hash):
+            return
+
+        # Adding the message to the tangle if it doesn't exist yet
+        node.tangle.add_msg(msg)
+
+        # Propagating message to other nodes
+        msg.process(self, node)
 
     def run(self):
         while not self.terminate_flag.is_set():

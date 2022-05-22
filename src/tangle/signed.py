@@ -4,12 +4,9 @@ from wallet import Wallet
 
 
 class Signed:
-    def __init__(self, signature: str = None):
+    def __init__(self, hash: str = None, signature: str = None):
+        self.hash = hash
         self.signature = signature
-
-    @property
-    def hash(self) -> str:
-        ...
 
     @property
     def vk(self) -> str:

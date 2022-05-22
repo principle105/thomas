@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 
@@ -13,6 +14,7 @@ from yaspin.spinners import Spinners
 from constants import MINIMUM_SEND_AMT
 from p2p import Node
 from tangle import Tangle, Transaction
+from tangle.messages import NewTransaction
 from wallet import Wallet
 
 # Setting up logging
@@ -66,7 +68,10 @@ def handle_wallet_input(secret):
 
 @app.command()
 def info():
-    Send.important(figlet_format("Thomas Coin") + "The final currency")
+    Send.important(
+        figlet_format("Thomas Coin")
+        + '"The final currency"\n\nThomas coin is a fast and lightweight crypto currency designed for every-day applications.'
+    )
 
 
 @app.command()
@@ -87,17 +92,36 @@ def wallet():
     Send.important(f"ADDRESS: {wallet.address}\nPRIVATE KEY: {wallet.pk}")
 
 
-def send(tangle, node):
-    private_key = inquirer.secret(
-        message="Your Private Key:",
+def view_msg(tangle, _):
+    msg_hash = inquirer.text(
+        message="Message Hash:",
         validate=EmptyInputValidator(),
     ).execute()
 
-    wallet = handle_wallet_input(private_key)
+    msg = tangle.get_msg(msg_hash)
 
-    if wallet is None:
-        return
+    print("the message received is", msg)
 
+    formatted_data = json.dumps(msg.to_dict(), indent=4)
+
+    Send.regular(formatted_data)
+
+
+def connect(_, node):
+    host = inquirer.text(
+        message="Host:",
+        validate=EmptyInputValidator(),
+    ).execute()
+
+    port = inquirer.number(
+        message="Port:",
+        validate=EmptyInputValidator(),
+    ).execute()
+
+    node.connect_to_node(host, int(port))
+
+
+def send(tangle, node):
     receiver = inquirer.text(
         message="Recipient's Address:",
         validate=EmptyInputValidator(),
@@ -110,10 +134,15 @@ def send(tangle, node):
     ).execute()
 
     # Create the transaction object
-    t = Transaction(sender=wallet.address, receiver=receiver, amt=int(amt))
+    t = Transaction(
+        sender=node.wallet.address, receiver=receiver, amt=int(amt), index=...
+    )
+
+    # Creating the message object
+    msg = NewTransaction(node_id=node.id, payload=t.to_dict())
 
     with Send.spinner("Solving Proof of Work"):
-        t.do_work()
+        msg.do_work(tangle)
 
     Send.success("Completed Proof of Work!")
 
@@ -121,21 +150,22 @@ def send(tangle, node):
         message="Are you sure you want to send this transaction?", default=False
     ).execute()
 
-    t.add_tips(tangle)
+    msg.select_parents(tangle)
 
-    tangle.add_transaction(t)
+    tangle.add_msg(msg)
 
     if proceed:
         with Send.spinner("Broadcasting the transaction to network"):
-            ...
+            node.send_to_nodes(msg.to_dict())
 
-        Send.success("Transaction broadcasted!")
+        Send.success("Transaction sent!")
+        Send.important(f"Message Hash: {msg.hash}")
 
     else:
         Send.fail("Transaction cancelled!")
 
 
-def view_wallet_balance(tangle, _):
+def view_balance(tangle, _):
     address = inquirer.text(
         message="Address:",
         validate=EmptyInputValidator(),
@@ -160,6 +190,16 @@ def start():
         validate=EmptyInputValidator(),
     ).execute()
 
+    private_key = inquirer.secret(
+        message="Your Private Key:",
+        validate=EmptyInputValidator(),
+    ).execute()
+
+    wallet = handle_wallet_input(private_key)
+
+    if wallet is None:
+        return
+
     full_node = inquirer.confirm(
         message="Would you like it to be a full node?", default=False
     ).execute()
@@ -170,6 +210,7 @@ def start():
         host=host,
         port=int(port),
         tangle=tangle,
+        wallet=wallet,
         full_node=full_node,
     )
 
@@ -177,7 +218,12 @@ def start():
 
     Send.success("Node started!")
 
-    choices = {"Send": send, "View Wallet Balance": view_wallet_balance}
+    choices = {
+        "Send": send,
+        "View Balance": view_balance,
+        "View Message": view_msg,
+        "Connect": connect,
+    }
 
     is_done = False
 

@@ -31,11 +31,8 @@ class NodeConnection(Thread):
     def decompress(self, compressed):
         return zlib.decompress(b64decode(compressed))
 
-    def send(self, data: bytes):
-        if not isinstance(data, bytes):
-            raise ValueError("Input argument must be bytes")
-
-        send_data = data + EOT_CHAR
+    def send(self, data):
+        send_data = self.compress(data) + EOT_CHAR
 
         self.sock.sendal(send_data)
 
