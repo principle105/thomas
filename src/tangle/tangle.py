@@ -1,39 +1,41 @@
 import math
 import os
 import pickle
+import random
 
 import networkx as nx
 
 from config import TANGLE_PATH
 from constants import BASE_DIFFICULTY, GAMMA, TIME_WINDOW
 
-from .messages import Message, genesis_msg
-from .transaction import Transaction
+from .messages import Message, NewTransaction, genesis_msg
 
 
 class TangleState:
+    """Keeps track of the tangle's state"""
+
     def __init__(self):
         self.tips = []
         self.wallets = {}
 
-    def add_transaction(self, t: Transaction):
-        sender_bal = self.get_balance(t.sender)
+    def add_transaction(self, msg: NewTransaction):
+        t = msg.get_transaction()
+
+        sender_bal = self.get_balance(msg.node_id)
         receiver_bal = self.get_balance(t.receiver)
 
-        if t.sender != "0":
-            self.wallets[t.sender] = sender_bal - t.amt
+        if msg.node_id != "0":
+            self.wallets[msg.node_id] = sender_bal - t.amt
 
         self.wallets[t.receiver] = receiver_bal + t.amt
 
-    def add_tip(self, tip: str):
-        self.tips.append(tip)
+    def select_tips(self):
+        if self.tips == []:
+            return []
 
-    def remove_tip(self, tip: str):
-        self.tips.remove(tip)
+        amt = min(len(self.tips), 4)
 
-    def remove_tips(self, tips: list[str]):
-        for t in tips:
-            self.remove_tip(t)
+        return random.sample(self.tips, amt)
 
     def get_balance(self, address: str):
         return self.wallets.get(address, 0)
@@ -66,7 +68,10 @@ class Tangle:
         return self.state.get_balance
 
     def add_genesis(self):
-        self.raw_add_msg(genesis_msg)
+        self.add_msg(genesis_msg)
+
+    def get_address_transaction_index(self, address: str):
+        return sum(1 for n in self.graph.nodes(data=True) if n[1]["data"] == address)
 
     def get_difficulty(self, msg: Message):
         # Amount of messages in the last time window
@@ -74,9 +79,9 @@ class Tangle:
         msg_count = sum(
             1
             for mt in self.graph.nodes(data=True)
-            if (b := mt[1]["data"]) == msg.node_id
-            and b.timestamp > msg.timestamp - TIME_WINDOW
-            and b.timestamp < msg.timestamp
+            if (m := mt[1]["data"]) == msg.node_id
+            and m.timestamp > msg.timestamp - TIME_WINDOW
+            and m.timestamp < msg.timestamp
         )
 
         return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
@@ -84,21 +89,16 @@ class Tangle:
     def get_msg(self, hash_str: str) -> Message:
         return self.graph.nodes(data=True)[hash_str]["data"]
 
-    def raw_add_msg(self, msg: Message):
+    def add_msg(self, msg: Message):
         self.graph.add_node(msg.hash, data=msg)
 
         msg.update_state(self)
 
-    def add_msg(self, msg: Message):
-        # Removing the tips from the pool
-        self.state.remove_tips(msg.parents)
-
-        self.state.add_tip(msg.hash)
-
-        self.raw_add_msg(msg)
-
         for p in msg.parents:
             self.graph.add_edge(p, msg.hash)
+            self.state.tips.remove(p)
+
+        self.state.tips.append(msg.hash)
 
     def save(self):
         with open(TANGLE_PATH, "wb") as f:

@@ -35,6 +35,10 @@ class Message(Signed):
 
         self.payload = payload
 
+    @property
+    def vk(self):
+        return self.node_id
+
     def process(self, node, conn):
         """Handles propogating a new message"""
         ...
@@ -47,7 +51,9 @@ class Message(Signed):
         ...
 
     def select_parents(self, tangle):
-        print("current tips:", tangle.state.tips)
+        tips = tangle.state.select_tips()
+
+        self.parents = tips
 
     def do_work(self, tangle):
         difficulty = tangle.get_difficulty(self)

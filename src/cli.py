@@ -100,8 +100,6 @@ def view_msg(tangle, _):
 
     msg = tangle.get_msg(msg_hash)
 
-    print("the message received is", msg)
-
     formatted_data = json.dumps(msg.to_dict(), indent=4)
 
     Send.regular(formatted_data)
@@ -133,10 +131,10 @@ def send(tangle, node):
         validate=EmptyInputValidator(),
     ).execute()
 
+    index = tangle.get_address_transaction_index(node.wallet.address)
+
     # Create the transaction object
-    t = Transaction(
-        sender=node.wallet.address, receiver=receiver, amt=int(amt), index=...
-    )
+    t = Transaction(receiver=receiver, amt=int(amt), index=index)
 
     # Creating the message object
     msg = NewTransaction(node_id=node.id, payload=t.to_dict())
@@ -151,6 +149,8 @@ def send(tangle, node):
     ).execute()
 
     msg.select_parents(tangle)
+
+    msg.sign(node.wallet)
 
     tangle.add_msg(msg)
 
