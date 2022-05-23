@@ -39,10 +39,6 @@ class Message(Signed):
     def vk(self):
         return self.node_id
 
-    def process(self, node, conn):
-        """Handles propogating a new message"""
-        ...
-
     def update_state(self, tangle):
         """Updates the tangle with a message"""
         ...

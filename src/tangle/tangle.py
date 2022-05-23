@@ -58,10 +58,7 @@ class Tangle:
 
     @property
     def has_genesis(self):
-        return (
-            len(self.graph.nodes) > 0
-            and self.graph.nodes[0] == Message.genesis_msg.hash
-        )
+        return self.graph.has_node(genesis_msg.hash)
 
     @property
     def get_balance(self):
@@ -87,7 +84,10 @@ class Tangle:
         return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
 
     def get_msg(self, hash_str: str) -> Message:
-        return self.graph.nodes(data=True)[hash_str]["data"]
+        if self.graph.has_node(hash_str) is False:
+            return None
+
+        self.graph.nodes(data=True)[hash_str]["data"]
 
     def add_msg(self, msg: Message):
         self.graph.add_node(msg.hash, data=msg)

@@ -18,12 +18,13 @@ class NodeConnection(Thread):
         self.terminate_flag = Event()
 
         self.main_node = main_node
-        self.sock = sock
 
         self.host = host
         self.port = port
 
         self.id = id
+
+        self.sock = sock
 
     def compress(self, data):
         return b64encode(zlib.compress(data, 6))
@@ -31,10 +32,10 @@ class NodeConnection(Thread):
     def decompress(self, compressed):
         return zlib.decompress(b64decode(compressed))
 
-    def send(self, data):
-        send_data = self.compress(data) + EOT_CHAR
+    def send(self, data: dict):
+        send_data = self.compress(json.dumps(data).encode()) + EOT_CHAR
 
-        self.sock.sendal(send_data)
+        self.sock.sendall(send_data)
 
     def stop(self):
         self.terminate_flag.set()
@@ -74,7 +75,7 @@ class NodeConnection(Thread):
 
             if chunk != b"":
                 buffer += chunk
-                eot_pos = buffer.find(self.EOT_CHAR)
+                eot_pos = buffer.find(EOT_CHAR)
 
                 while eot_pos > 0:
                     packet = buffer[:eot_pos]
@@ -82,7 +83,7 @@ class NodeConnection(Thread):
 
                     self.main_node.message_from_node(self, self.parse_packet(packet))
 
-                    eot_pos = buffer.find(self.EOT_CHAR)
+                    eot_pos = buffer.find(EOT_CHAR)
 
             time.sleep(0.01)
 

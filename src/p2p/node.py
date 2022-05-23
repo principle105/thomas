@@ -93,38 +93,37 @@ class Node(Thread):
             )
             thread_client.start()
 
+            self.nodes_outbound.append(thread_client)
+
         except Exception:
             logging.exception("Could not connect with node")
-
-    def disconnect_from_node(self, node):
-        if node in self.nodes_outbound:
-            node.stop()
-            node.join()
-            del self.nodes_outbound[self.nodes_outbound.index(node)]
 
     def create_new_connection(self, sock: socket.socket, id: str, host: str, port: int):
         return NodeConnection(main_node=self, sock=sock, id=id, host=host, port=port)
 
     def node_disconnected(self, node):
+        if node in self.nodes_inbound:
+            self.nodes_inbound.remove(node)
+
         if node in self.nodes_outbound:
-            node.stop()
+            self.nodes_outbound.remove(node)
 
     def message_from_node(self, node: NodeConnection, data: dict):
         msg = get_message_from_data(data)
 
-        is_valid = msg.is_valid(node.tangle)
+        is_valid = msg.is_valid(self.tangle)
 
         if is_valid is False:
             return
 
-        if node.tangle.get_msg(msg.hash):
+        if self.tangle.get_msg(msg.hash):
             return
 
         # Adding the message to the tangle if it doesn't exist yet
-        node.tangle.add_msg(msg)
+        self.tangle.add_msg(msg)
 
         # Propagating message to other nodes
-        msg.process(self, node)
+        self.send_to_nodes(msg, exclude=[node])
 
     def run(self):
         while not self.terminate_flag.is_set():

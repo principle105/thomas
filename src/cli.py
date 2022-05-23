@@ -148,13 +148,13 @@ def send(tangle, node):
         message="Are you sure you want to send this transaction?", default=False
     ).execute()
 
-    msg.select_parents(tangle)
-
-    msg.sign(node.wallet)
-
-    tangle.add_msg(msg)
-
     if proceed:
+        msg.select_parents(tangle)
+
+        msg.sign(node.wallet)
+
+        tangle.add_msg(msg)
+
         with Send.spinner("Broadcasting the transaction to network"):
             node.send_to_nodes(msg.to_dict())
 
