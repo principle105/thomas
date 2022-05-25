@@ -2,11 +2,12 @@ import math
 import os
 import pickle
 import random
+import time
 
 import networkx as nx
 
 from config import STORAGE_DIRECTORY
-from constants import BASE_DIFFICULTY, GAMMA, TIME_WINDOW
+from constants import BASE_DIFFICULTY, GAMMA, MAX_PARENT_AGE, MAX_PARENTS, TIME_WINDOW
 
 from .messages import Message, NewTransaction, genesis_msg
 
@@ -17,8 +18,8 @@ class TangleState:
     """Keeps track of the tangle's state"""
 
     def __init__(self):
-        self.tips = []
-        self.wallets = {}
+        self._tips = {}  # hash: timestamp
+        self.wallets = {}  # address: balance
 
     def add_transaction(self, msg: NewTransaction):
         t = msg.get_transaction()
@@ -31,13 +32,25 @@ class TangleState:
 
         self.wallets[t.receiver] = receiver_bal + t.amt
 
+    def get_tips(self):
+        current_time = time.time()
+
+        # Purging tips that are too old
+        self._tips = {
+            h: t for h, t in self._tips.items() if t + MAX_PARENT_AGE >= current_time
+        }
+
+        return list(self._tips.keys())
+
     def select_tips(self):
-        if self.tips == []:
-            return []
+        tips = self.get_tips()
 
-        amt = min(len(self.tips), 4)
+        if tips == []:
+            return genesis_msg.hash
 
-        return random.sample(self.tips, amt)
+        amt = min(len(tips), MAX_PARENTS)
+
+        return random.sample(tips, amt)
 
     def get_balance(self, address: str):
         return self.wallets.get(address, 0)
@@ -105,10 +118,7 @@ class Tangle:
         for p in msg.parents:
             self.graph.add_edge(p, msg.hash)
 
-            if len(list(self.graph.neighbors(p))) > 2:
-                self.state.tips.remove(p)
-
-        self.state.tips.append(msg.hash)
+            self.state._tips[msg.hash] = msg.timestamp
 
     def save(self):
         with open(TANGLE_PATH, "wb") as f:
