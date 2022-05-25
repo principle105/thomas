@@ -81,6 +81,3 @@ class Message(Signed):
     @classmethod
     def from_dict(cls, data: dict):
         return cls(*data)
-
-    def __eq__(self, other) -> bool:
-        return other == self.node_id

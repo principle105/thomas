@@ -1,13 +1,17 @@
+import json
 import logging
 import socket
 import time
 from threading import Event, Thread
 
+from config import STORAGE_DIRECTORY
 from tangle import Tangle
 from tangle.messages import get_message_from_data
 from wallet import Wallet
 
 from .node_connection import NodeConnection
+
+KNOWN_PEERS_PATH = f"{STORAGE_DIRECTORY}/known_peers.json"
 
 
 class Node(Thread):
@@ -69,6 +73,24 @@ class Node(Thread):
         if node in self.all_nodes:
             node.send(data)
 
+    def connect_to_known_nodes(self):
+        with open(KNOWN_PEERS_PATH, "r") as f:
+            saved_nodes = json.load(f)
+
+        # Trying to connect with saved nodes
+        for host, port in saved_nodes.values():
+            self.connect_to_node(host, port)
+
+    def save_connected_nodes(self):
+        with open(KNOWN_PEERS_PATH, "r+") as f:
+            data = json.load(f)
+
+            for n in self.all_nodes:
+                if n.id not in data:
+                    data[n.id] = [n.host, n.port]
+
+            json.dump(data, f)
+
     def connect_to_node(self, host: str, port: int):
         if host == self.host and port == self.port:
             logging.info("You cannot connect with yourself")
@@ -123,7 +145,7 @@ class Node(Thread):
         self.tangle.add_msg(msg)
 
         # Propagating message to other nodes
-        self.send_to_nodes(msg, exclude=[node])
+        self.send_to_nodes(data, exclude=[node])
 
     def run(self):
         while not self.terminate_flag.is_set():

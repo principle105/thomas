@@ -5,10 +5,12 @@ import random
 
 import networkx as nx
 
-from config import TANGLE_PATH
+from config import STORAGE_DIRECTORY
 from constants import BASE_DIFFICULTY, GAMMA, TIME_WINDOW
 
 from .messages import Message, NewTransaction, genesis_msg
+
+TANGLE_PATH = f"{STORAGE_DIRECTORY}/tangle.thomas"
 
 
 class TangleState:
@@ -68,26 +70,32 @@ class Tangle:
         self.add_msg(genesis_msg)
 
     def get_address_transaction_index(self, address: str):
-        return sum(1 for n in self.graph.nodes(data=True) if n[1]["data"] == address)
+        return sum(
+            1 for n in self.graph.nodes(data=True) if n[1]["data"].node_id == address
+        )
 
     def get_difficulty(self, msg: Message):
         # Amount of messages in the last time window
         # TODO: cache messages
-        msg_count = sum(
-            1
-            for mt in self.graph.nodes(data=True)
-            if (m := mt[1]["data"]) == msg.node_id
-            and m.timestamp > msg.timestamp - TIME_WINDOW
-            and m.timestamp < msg.timestamp
-        )
+
+        def _in_window(v):
+            m = v[1]["data"]
+
+            return (
+                m.node_id == msg.node_id
+                and m.timestamp > msg.timestamp - TIME_WINDOW
+                and m.timestamp < msg.timestamp
+            )
+
+        msg_count = len(list(filter(_in_window, self.graph.nodes(data=True))))
 
         return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
 
     def get_msg(self, hash_str: str) -> Message:
-        if self.graph.has_node(hash_str) is False:
-            return None
+        if hash_str in self.graph:
+            return self.graph.nodes(data=True)[hash_str]["data"]
 
-        self.graph.nodes(data=True)[hash_str]["data"]
+        return
 
     def add_msg(self, msg: Message):
         self.graph.add_node(msg.hash, data=msg)
@@ -96,7 +104,9 @@ class Tangle:
 
         for p in msg.parents:
             self.graph.add_edge(p, msg.hash)
-            self.state.tips.remove(p)
+
+            if len(list(self.graph.neighbors(p))) > 2:
+                self.state.tips.remove(p)
 
         self.state.tips.append(msg.hash)
 

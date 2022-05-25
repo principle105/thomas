@@ -1,1 +1,1 @@
-TANGLE_PATH = "storage/tangle.thomas"
+STORAGE_DIRECTORY = "storage"

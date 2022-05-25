@@ -61,7 +61,7 @@ def handle_wallet_input(secret):
         wallet = Wallet(secret=secret)
     except ValueError:
         Send.fail("That is not a valid private key")
-        return None
+        return
 
     return wallet
 
@@ -99,6 +99,9 @@ def view_msg(tangle, _):
     ).execute()
 
     msg = tangle.get_msg(msg_hash)
+
+    if msg is None:
+        return Send.fail("A message with that hash does not exist")
 
     formatted_data = json.dumps(msg.to_dict(), indent=4)
 
@@ -216,6 +219,8 @@ def start():
 
     node.start()
 
+    node.connect_to_known_nodes()
+
     Send.success("Node started!")
 
     choices = {
@@ -246,6 +251,8 @@ def start():
     Send.fail("Stopping Node...")
 
     node.stop()
+
+    node.save_connected_nodes()
 
     tangle.save()
 
