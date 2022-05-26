@@ -12,5 +12,28 @@ class NewTransaction(Message):
         # Checking if the transaction is valid
         tangle.state.add_transaction(self)
 
-    def is_valid(self, tangle) -> bool:
+    def is_payload_valid(self, tangle) -> bool:
+        # Transaction form is valid
+        try:
+            t = self.get_transaction()
+        except Exception:
+            return False
+
+        # Field validation
+        if (
+            any(
+                isinstance(t.amt, int),
+                isinstance(t.reciever, str),
+                isinstance(t.index, int),
+            )
+            is False
+        ):
+            return False
+
+        # Check if the transaction index is valid
         ...
+
+        # Checking if the sender has/had enough to send the transaction
+        ...
+
+        return True

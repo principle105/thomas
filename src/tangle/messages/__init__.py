@@ -19,7 +19,14 @@ def get_message_from_data(data: dict):
     if msg_cls is None:
         return False
 
-    return msg_cls(**data)
+    try:
+        msg_obj = msg_cls(**data)
+        
+    except Exception:
+        return False
+
+    else:
+        return msg_obj
 
 
 genesis_msg = get_message_from_data(GENESIS_MSG_DATA)

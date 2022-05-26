@@ -1,7 +1,10 @@
 import time
 
+from objsize import get_deep_size
+
+from constants import GENESIS_MSG_DATA, MAX_MSG_SIZE, MAX_PARENT_AGE, MAX_PARENTS
 from tangle import Signed
-from utils.pow import proof_of_work
+from utils.pow import get_hash_result, get_target, is_valid_hash, proof_of_work
 
 
 class Message(Signed):
@@ -43,13 +46,67 @@ class Message(Signed):
         """Updates the tangle with a message"""
         ...
 
-    def is_valid(self, tangle, node) -> bool:
+    def is_valid(self, tangle, depth=2):
+        # Check if the fields are the correct types and fall within the correct ranges
+        data = self.to_dict()
+
+        # Transaction does not exceed the maximum size
+        if get_deep_size(data) > MAX_MSG_SIZE:
+            return False
+
+        # Field validation
+        if (
+            any(
+                isinstance(self.node_id, str),
+                isinstance(self.payload, dict),
+                isinstance(self.parents, list),
+                isinstance(self.timestamp, float),
+            )
+            is False
+        ):
+            return False
+
+        if data == GENESIS_MSG_DATA:
+            return True
+
+        # Validate timestamps
+        ...
+
+        # Checking if the hash matches the data
+        if get_hash_result(self.raw_data, self.nonce) != self.hash:
+            return False
+
+        target = get_target(tangle.get_difficulty(self))
+
+        # Checking if enough work has been done
+        if is_valid_hash(self.hash, target) is False:
+            return False
+
+        # Checking if the payload is valid
+        if self.is_payload_valid(tangle) is False:
+            return False
+
+        # Checking the amount, validity and age of the parents
+        if depth > 0:
+            if len(self.parents) > MAX_PARENTS:
+                return False
+
+            for p in self.parents:
+                p_msg = tangle.get_msg(p)
+
+                if p_msg.is_valid(tangle, depth - 1) is False:
+                    return False
+
+                if self.timestamp - p_msg.timestamp not in range(0, MAX_PARENT_AGE + 1):
+                    return False
+
+        return True
+
+    def is_payload_valid(self, tangle) -> bool:
         ...
 
     def select_parents(self, tangle):
-        tips = tangle.state.select_tips()
-
-        self.parents = tips
+        self.parents = tangle.state.select_tips()
 
     def do_work(self, tangle):
         difficulty = tangle.get_difficulty(self)

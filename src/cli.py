@@ -92,6 +92,13 @@ def wallet():
     Send.important(f"ADDRESS: {wallet.address}\nPRIVATE KEY: {wallet.pk}")
 
 
+def node_stats(_, node):
+    Send.important(
+        f"Inbound Connections: {len(node.nodes_inbound)}\n"
+        f"Outbound Connections: {len(node.nodes_outbound)}"
+    )
+
+
 def view_msg(tangle, _):
     msg_hash = inquirer.text(
         message="Message Hash:",
@@ -151,21 +158,23 @@ def send(tangle, node):
         message="Are you sure you want to send this transaction?", default=False
     ).execute()
 
-    if proceed:
-        msg.select_parents(tangle)
+    if proceed is False:
+        return Send.fail("Transaction cancelled!")
 
-        msg.sign(node.wallet)
+    msg.select_parents(tangle)
 
-        tangle.add_msg(msg)
+    msg.sign(node.wallet)
 
-        with Send.spinner("Broadcasting the transaction to network"):
-            node.send_to_nodes(msg.to_dict())
+    if msg.is_valid(tangle) is False:
+        return Send.fail("Invalid transaction")
 
-        Send.success("Transaction sent!")
-        Send.important(f"Message Hash: {msg.hash}")
+    tangle.add_msg(msg)
 
-    else:
-        Send.fail("Transaction cancelled!")
+    with Send.spinner("Broadcasting the transaction to network"):
+        node.send_to_nodes(msg.to_dict())
+
+    Send.success("Transaction sent!")
+    Send.important(f"Message Hash: {msg.hash}")
 
 
 def view_balance(tangle, _):
@@ -174,7 +183,7 @@ def view_balance(tangle, _):
         validate=EmptyInputValidator(),
     ).execute()
 
-    balance = tangle.get_balance(address)
+    balance = tangle.get_current_balance(address)
 
     sender = Send.success if balance else Send.fail
 
@@ -227,6 +236,7 @@ def start():
         "Send": send,
         "View Balance": view_balance,
         "View Message": view_msg,
+        "Node Stats": node_stats,
         "Connect": connect,
     }
 

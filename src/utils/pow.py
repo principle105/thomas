@@ -15,14 +15,6 @@ def get_hash_result(msg: str, nonce: int) -> str:
     return sha256(f"{msg}{nonce}".encode()).hexdigest()
 
 
-def is_valid_pow(*, hash_str: str, nonce: int, msg: str, difficulty: int) -> bool:
-    target = get_target(difficulty)
-
-    hash_result = get_hash_result(msg, nonce)
-
-    return hash_str == hash_result and is_valid_hash(hash_result, target)
-
-
 def proof_of_work(msg: str, difficulty: int):
     target = get_target(difficulty)
 

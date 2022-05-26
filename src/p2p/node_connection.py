@@ -26,6 +26,8 @@ class NodeConnection(Thread):
 
         self.sock = sock
 
+        self.sock.settimeout(10.0)
+
     def compress(self, data):
         return b64encode(zlib.compress(data, 6))
 
@@ -56,8 +58,6 @@ class NodeConnection(Thread):
             return packet
 
     def run(self):
-        self.sock.settimeout(10.0)
-
         buffer = b""
 
         while not self.terminate_flag.is_set():
@@ -71,7 +71,7 @@ class NodeConnection(Thread):
 
             except Exception as e:
                 self.terminate_flag.set()
-                logging.exception("Unexpected error")
+                logging.exception(e)
 
             if chunk != b"":
                 buffer += chunk
@@ -91,4 +91,5 @@ class NodeConnection(Thread):
         self.sock.close()
 
         self.main_node.node_disconnected(self)
+
         logging.debug("Node connection stopped")

@@ -18,6 +18,7 @@ inquirerpy = "^0.3.3"
 pyfiglet = "^0.8.post1"
 yaspin = "^2.1.0"
 networkx = "^2.8"
+objsize = "^0.3.3"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.10.1"

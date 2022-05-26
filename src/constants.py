@@ -11,6 +11,7 @@ GAMMA = 0.1
 TIME_WINDOW = 1000 * 1000  # ms
 MAX_PARENTS = 6
 MAX_PARENT_AGE = 60 * 60
+MAX_MSG_SIZE = 1024  # bytes
 
 # Currency details
 MINIMUM_SEND_AMT = 1

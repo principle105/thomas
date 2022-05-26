@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import socket
 import time
 from threading import Event, Thread
@@ -73,22 +74,27 @@ class Node(Thread):
         if node in self.all_nodes:
             node.send(data)
 
-    def connect_to_known_nodes(self):
+    def get_known_nodes(self):
+        if not os.path.exists(KNOWN_PEERS_PATH):
+            return {}
+
         with open(KNOWN_PEERS_PATH, "r") as f:
-            saved_nodes = json.load(f)
+            return json.load(f)
+
+    def connect_to_known_nodes(self):
+        saved_nodes = self.get_known_nodes()
 
         # Trying to connect with saved nodes
         for host, port in saved_nodes.values():
             self.connect_to_node(host, port)
 
     def save_connected_nodes(self):
-        with open(KNOWN_PEERS_PATH, "r+") as f:
-            data = json.load(f)
+        data = self.get_known_nodes()
 
-            for n in self.all_nodes:
-                if n.id not in data:
-                    data[n.id] = [n.host, n.port]
+        for n in self.nodes_outbound:
+            data[n.id] = [n.host, n.port]
 
+        with open(KNOWN_PEERS_PATH, "w+") as f:
             json.dump(data, f)
 
     def connect_to_node(self, host: str, port: int):

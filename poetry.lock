@@ -126,6 +126,14 @@ extra = ["lxml (>=4.6)", "pygraphviz (>=1.9)", "pydot (>=1.4.2)", "sympy (>=1.10
 test = ["pytest (>=7.1)", "pytest-cov (>=3.0)", "codecov (>=2.1)"]
 
 [[package]]
+name = "objsize"
+version = "0.3.3"
+description = "Traversal over Python's objects sub-tree and calculating the total size of the sub-tree (deep size)."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "pathspec"
 version = "0.9.0"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -246,7 +254,7 @@ termcolor = ">=1.1.0,<2.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "75843f33a0285eb4fa2c5d5e017613a5cd374c2dc21e271b15e81090559b2f17"
+content-hash = "27b18962fad9b02db9fa55ed82b297875696f4b4b0384560d3821b932a27e3ea"
 
 [metadata.files]
 base58 = [
@@ -308,6 +316,9 @@ mypy-extensions = [
 networkx = [
     {file = "networkx-2.8-py3-none-any.whl", hash = "sha256:1a1e8fe052cc1b4e0339b998f6795099562a264a13a5af7a32cad45ab9d4e126"},
     {file = "networkx-2.8.tar.gz", hash = "sha256:4a52cf66aed221955420e11b3e2e05ca44196b4829aab9576d4d439212b0a14f"},
+]
+objsize = [
+    {file = "objsize-0.3.3-py3-none-any.whl", hash = "sha256:6b950e0d78e7d93918fbd711126d740291a61ff4e53fc47cce799dce7554b1ad"},
 ]
 pathspec = [
     {file = "pathspec-0.9.0-py2.py3-none-any.whl", hash = "sha256:7d15c4ddb0b5c802d161efc417ec1a2558ea2653c2e8ad9c19098201dc1c993a"},
