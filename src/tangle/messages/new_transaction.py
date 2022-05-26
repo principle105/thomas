@@ -38,7 +38,10 @@ class NewTransaction(Message):
         if self.node_id == t.receiver:
             return False
 
-        # TODO: Check if the transaction index is valid with the timestamp
+        index = tangle.get_address_transaction_index(self.node_id)
+
+        if index != t.index:
+            return False
 
         # Checking if the sender has/had enough to send the transaction
 
@@ -47,12 +50,7 @@ class NewTransaction(Message):
 
         balance = tangle.get_balance(self.node_id)
 
-        if self.hash in tangle.graph:
-            if balance < 0:
-                return False
-
-        else:
-            if balance < t.amt:
-                return False
+        if balance < t.amt:
+            return False
 
         return True

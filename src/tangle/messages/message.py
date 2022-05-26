@@ -47,7 +47,7 @@ class Message(Signed):
         """Updates the tangle with a message"""
         ...
 
-    def is_valid(self, tangle, depth=2):
+    def is_valid(self, tangle, depth=1):
         # Check if the fields are the correct types and fall within the correct ranges
         data = self.to_dict()
 
@@ -102,15 +102,14 @@ class Message(Signed):
             return False
 
         # Checking the amount, validity and age of the parents
-        if depth > 0:
+        for _ in range(depth):
             if len(self.parents) > MAX_PARENTS:
                 return False
 
             for p in self.parents:
                 p_msg = tangle.get_msg(p)
 
-                if p_msg.is_valid(tangle, depth - 1) is False:
-                    return False
+                # The validity of the parents is known because they are valid if on the tangle
 
                 if p_msg.hash != genesis_msg.hash:
                     if math.ceil(self.timestamp - p_msg.timestamp) not in range(

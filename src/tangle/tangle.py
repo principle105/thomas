@@ -83,16 +83,14 @@ class Tangle:
         self.add_msg(genesis_msg)
 
     def get_address_transaction_index(self, address: str):
-        return sum(
-            1 for n in self.graph.nodes(data=True) if n[1]["data"].node_id == address
-        )
+        return sum(1 for _, n in self.graph.nodes(data="data") if n.node_id == address)
 
     def get_difficulty(self, msg: Message):
         # Amount of messages in the last time window
         # TODO: cache messages
 
         def _in_window(v):
-            m = v[1]["data"]
+            m = v[1]
 
             return (
                 m.node_id == msg.node_id
@@ -100,7 +98,7 @@ class Tangle:
                 and m.timestamp < msg.timestamp
             )
 
-        msg_count = len(list(filter(_in_window, self.graph.nodes(data=True))))
+        msg_count = len(list(filter(_in_window, self.graph.nodes(data="data"))))
 
         return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
 
