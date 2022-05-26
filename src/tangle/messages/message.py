@@ -1,8 +1,9 @@
+import math
 import time
 
 from objsize import get_deep_size
 
-from constants import GENESIS_MSG_DATA, MAX_MSG_SIZE, MAX_PARENT_AGE, MAX_PARENTS
+from constants import MAX_MSG_SIZE, MAX_PARENT_AGE, MAX_PARENTS
 from tangle import Signed
 from utils.pow import get_hash_result, get_target, is_valid_hash, proof_of_work
 
@@ -39,7 +40,7 @@ class Message(Signed):
         self.payload = payload
 
     @property
-    def vk(self):
+    def address(self):
         return self.node_id
 
     def update_state(self, tangle):
@@ -57,29 +58,43 @@ class Message(Signed):
         # Field validation
         if (
             any(
-                isinstance(self.node_id, str),
-                isinstance(self.payload, dict),
-                isinstance(self.parents, list),
-                isinstance(self.timestamp, float),
+                (
+                    isinstance(self.node_id, str),
+                    isinstance(self.payload, dict),
+                    isinstance(self.parents, list),
+                    isinstance(self.timestamp, float),
+                )
             )
             is False
         ):
             return False
 
-        if data == GENESIS_MSG_DATA:
+        from . import genesis_msg
+
+        if data == genesis_msg.to_dict():
             return True
 
-        # Validate timestamps
-        ...
+        # TODO: Add more timestamp validation
+
+        current_time = time.time()
+
+        if current_time < self.timestamp:
+            return False
+
+        raw_data = self.get_raw_data()
 
         # Checking if the hash matches the data
-        if get_hash_result(self.raw_data, self.nonce) != self.hash:
+        if get_hash_result(raw_data, self.nonce) != self.hash:
             return False
 
         target = get_target(tangle.get_difficulty(self))
 
         # Checking if enough work has been done
         if is_valid_hash(self.hash, target) is False:
+            return False
+
+        # Checking if the signature is valid
+        if self.is_signature_valid is False:
             return False
 
         # Checking if the payload is valid
@@ -97,8 +112,11 @@ class Message(Signed):
                 if p_msg.is_valid(tangle, depth - 1) is False:
                     return False
 
-                if self.timestamp - p_msg.timestamp not in range(0, MAX_PARENT_AGE + 1):
-                    return False
+                if p_msg.hash != genesis_msg.hash:
+                    if math.ceil(self.timestamp - p_msg.timestamp) not in range(
+                        0, MAX_PARENT_AGE + 1
+                    ):
+                        return False
 
         return True
 
@@ -109,13 +127,13 @@ class Message(Signed):
         self.parents = tangle.state.select_tips()
 
     def do_work(self, tangle):
+        raw_data = self.get_raw_data()
         difficulty = tangle.get_difficulty(self)
 
-        self.hash, self.nonce = proof_of_work(self.raw_data, difficulty)
+        self.hash, self.nonce = proof_of_work(raw_data, difficulty)
 
-    def raw_data(self) -> str:
-        # TODO: sort values for consistency
-        return "".join(self.meta_data.values())
+    def get_raw_data(self) -> str:
+        return "".join(str(s) for s in self.meta_data.values())
 
     @property
     def meta_data(self):

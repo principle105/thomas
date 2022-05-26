@@ -11,6 +11,7 @@ from pyfiglet import figlet_format
 from yaspin import yaspin
 from yaspin.spinners import Spinners
 
+from config import MAX_CONNECTIONS
 from constants import MINIMUM_SEND_AMT
 from p2p import Node
 from tangle import Tangle, Transaction
@@ -149,11 +150,6 @@ def send(tangle, node):
     # Creating the message object
     msg = NewTransaction(node_id=node.id, payload=t.to_dict())
 
-    with Send.spinner("Solving Proof of Work"):
-        msg.do_work(tangle)
-
-    Send.success("Completed Proof of Work!")
-
     proceed = inquirer.confirm(
         message="Are you sure you want to send this transaction?", default=False
     ).execute()
@@ -162,6 +158,11 @@ def send(tangle, node):
         return Send.fail("Transaction cancelled!")
 
     msg.select_parents(tangle)
+
+    with Send.spinner("Solving Proof of Work"):
+        msg.do_work(tangle)
+
+    Send.success("Completed Proof of Work!")
 
     msg.sign(node.wallet)
 
@@ -183,7 +184,7 @@ def view_balance(tangle, _):
         validate=EmptyInputValidator(),
     ).execute()
 
-    balance = tangle.get_current_balance(address)
+    balance = tangle.get_balance(address)
 
     sender = Send.success if balance else Send.fail
 
@@ -224,6 +225,7 @@ def start():
         tangle=tangle,
         wallet=wallet,
         full_node=full_node,
+        max_connections=MAX_CONNECTIONS,
     )
 
     node.start()

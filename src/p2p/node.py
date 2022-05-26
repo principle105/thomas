@@ -24,7 +24,7 @@ class Node(Thread):
         tangle: Tangle,
         wallet: Wallet,
         full_node: bool = False,
-        max_connections: int = 30,
+        max_connections: int,
     ):
         super().__init__()
 
@@ -138,6 +138,9 @@ class Node(Thread):
 
     def message_from_node(self, node: NodeConnection, data: dict):
         msg = get_message_from_data(data)
+
+        if msg is False:
+            return
 
         is_valid = msg.is_valid(self.tangle)
 

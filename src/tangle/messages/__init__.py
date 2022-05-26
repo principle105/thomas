@@ -21,7 +21,7 @@ def get_message_from_data(data: dict):
 
     try:
         msg_obj = msg_cls(**data)
-        
+
     except Exception:
         return False
 

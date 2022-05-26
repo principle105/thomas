@@ -1,3 +1,5 @@
+from constants import MINIMUM_SEND_AMT
+
 from ..transaction import Transaction
 from .message import Message
 
@@ -22,18 +24,35 @@ class NewTransaction(Message):
         # Field validation
         if (
             any(
-                isinstance(t.amt, int),
-                isinstance(t.reciever, str),
-                isinstance(t.index, int),
+                (
+                    isinstance(t.amt, int),
+                    isinstance(t.receiver, str),
+                    isinstance(t.index, int),
+                )
             )
             is False
         ):
             return False
 
-        # Check if the transaction index is valid
-        ...
+        # Making sure you aren't sending to yourself
+        if self.node_id == t.receiver:
+            return False
+
+        # TODO: Check if the transaction index is valid with the timestamp
 
         # Checking if the sender has/had enough to send the transaction
-        ...
+
+        if t.amt < MINIMUM_SEND_AMT:
+            return False
+
+        balance = tangle.get_balance(self.node_id)
+
+        if self.hash in tangle.graph:
+            if balance < 0:
+                return False
+
+        else:
+            if balance < t.amt:
+                return False
 
         return True

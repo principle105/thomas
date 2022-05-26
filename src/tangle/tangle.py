@@ -24,8 +24,8 @@ class TangleState:
     def add_transaction(self, msg: NewTransaction):
         t = msg.get_transaction()
 
-        sender_bal = self.get_current_balance(msg.node_id)
-        receiver_bal = self.get_current_balance(t.receiver)
+        sender_bal = self.get_balance(msg.node_id)
+        receiver_bal = self.get_balance(t.receiver)
 
         if msg.node_id != "0":
             self.wallets[msg.node_id] = sender_bal - t.amt
@@ -52,7 +52,7 @@ class TangleState:
 
         return random.sample(tips, amt)
 
-    def get_current_balance(self, address: str):
+    def get_balance(self, address: str):
         return self.wallets.get(address, 0)
 
 
@@ -76,11 +76,8 @@ class Tangle:
         return self.graph.has_node(genesis_msg.hash)
 
     @property
-    def get_current_balance(self):
-        return self.state.get_current_balance
-
     def get_balance(self):
-        ...
+        return self.state.get_balance
 
     def add_genesis(self):
         self.add_msg(genesis_msg)

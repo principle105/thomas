@@ -31,8 +31,8 @@ class Wallet:
         return b64encode(self.sk.sign(msg.encode())).decode()
 
     @classmethod
-    def is_signature_valid(cls, vk: str, signature: str, msg: str) -> bool:
-        vk = cls.get_vk_from_str(vk)
+    def is_signature_valid(cls, address: str, signature: str, msg: str) -> bool:
+        vk = cls.get_vk_from_address(address)
 
         try:
             vk.verify(b64decode(signature.encode()), msg.encode())

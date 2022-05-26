@@ -9,7 +9,7 @@ class Signed:
         self.signature = signature
 
     @property
-    def vk(self) -> str:
+    def address(self) -> str:
         ...
 
     @property
@@ -19,7 +19,7 @@ class Signed:
     @property
     def is_signature_valid(self) -> bool:
         return self.is_signed and Wallet.is_signature_valid(
-            self.vk, self.signature, self.hash
+            self.address, self.signature, self.hash
         )
 
     def sign(self, wallet: Wallet):
