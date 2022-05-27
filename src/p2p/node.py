@@ -147,11 +147,9 @@ class Node(Thread):
         if is_valid is False:
             return
 
-        if self.tangle.get_msg(msg.hash):
-            return
-
-        # Adding the message to the tangle if it doesn't exist yet
-        self.tangle.add_msg(msg)
+        if self.tangle.get_msg(msg.hash) is None:
+            # Adding the message to the tangle if it doesn't exist yet
+            self.tangle.add_msg(msg)
 
         # Propagating message to other nodes
         self.send_to_nodes(data, exclude=[node])
