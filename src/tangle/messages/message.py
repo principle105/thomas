@@ -4,15 +4,12 @@ import time
 from objsize import get_deep_size
 
 from constants import MAX_MSG_SIZE, MAX_PARENT_AGE, MAX_PARENTS
+from p2p.requests import Request
 from tangle import Signed
 from utils.pow import get_hash_result, get_target, is_valid_hash, proof_of_work
 
 
 class Message(Signed):
-    """
-    value: str -- Identifier of type of message
-    """
-
     def __init__(
         self,
         *,
