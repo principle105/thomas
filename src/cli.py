@@ -148,7 +148,7 @@ def send(tangle, node):
     t = Transaction(receiver=receiver, amt=int(amt), index=index)
 
     # Creating the message object
-    msg = NewTransaction(node_id=node.id, payload=t.to_dict())
+    msg = node.create_message(NewTransaction, t.to_dict())
 
     proceed = inquirer.confirm(
         message="Are you sure you want to send this transaction?", default=False
@@ -264,7 +264,7 @@ def start():
 
     node.stop()
 
-    node.save_connected_nodes()
+    node.save_all_nodes()
 
     tangle.save()
 

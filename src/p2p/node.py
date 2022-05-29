@@ -1,16 +1,18 @@
 import json
 import logging
 import os
+import random
 import socket
 import time
 from threading import Event, Thread
 
 from config import STORAGE_DIRECTORY
 from tangle import Tangle
-from tangle.messages import get_message_from_data
+from tangle.messages import message_lookup
 from wallet import Wallet
 
 from .node_connection import NodeConnection
+from .requests import DiscoverPeers, request_lookup
 
 KNOWN_PEERS_PATH = f"{STORAGE_DIRECTORY}/known_peers.json"
 
@@ -40,6 +42,9 @@ class Node(Thread):
         # Connections
         self.nodes_inbound = []
         self.nodes_outbound = []
+
+        # Other nodes that are known about
+        self.other_nodes = {}
 
         self.max_connections = max_connections
         self.full_node = full_node
@@ -84,15 +89,32 @@ class Node(Thread):
     def connect_to_known_nodes(self):
         saved_nodes = self.get_known_nodes()
 
-        # Trying to connect with saved nodes
-        for host, port in saved_nodes.values():
-            self.connect_to_node(host, port)
+        # Trying to connect with up to 30 saved nodes
+        if saved_nodes:
+            amt = min(max(len(saved_nodes), 1), 30)
 
-    def save_connected_nodes(self):
+            for host, port in random.sample(list(saved_nodes.values()), amt):
+                self.connect_to_node(host, port)
+
+    def create_message(self, msg_cls, payload: dict):
+        return msg_cls(node_id=self.id, payload=payload)
+
+    def create_request(self, request_cls, payload: dict = None):
+        request = request_cls(node_id=self.id, payload=payload)
+
+        request.add_hash()
+        request.sign(self.wallet)
+
+        return request
+
+    def save_all_nodes(self):
         data = self.get_known_nodes()
 
         for n in self.nodes_outbound:
             data[n.id] = [n.host, n.port]
+
+        for i, (host, port) in self.other_nodes.items():
+            data[i] = [host, port]
 
         with open(KNOWN_PEERS_PATH, "w+") as f:
             json.dump(data, f)
@@ -126,6 +148,12 @@ class Node(Thread):
         except Exception:
             logging.exception("Could not connect with node")
 
+        else:
+            # Peer discovery
+            request = self.create_request(DiscoverPeers)
+
+            self.send_to_node(thread_client, request.to_dict())
+
     def create_new_connection(self, sock: socket.socket, id: str, host: str, port: int):
         return NodeConnection(main_node=self, sock=sock, id=id, host=host, port=port)
 
@@ -137,7 +165,32 @@ class Node(Thread):
             self.nodes_outbound.remove(node)
 
     def message_from_node(self, node: NodeConnection, data: dict):
-        msg = get_message_from_data(data)
+        if self.handle_new_request(node, data) is None:
+            return
+
+        self.handle_new_message(node, data)
+
+    def handle_new_request(self, node: NodeConnection, data: dict):
+        request = request_lookup(data)
+
+        if request is False:
+            return
+
+        if request.is_valid() is False:
+            return
+
+        if request.response is None:
+            request.respond(self, node)
+
+            self.send_to_node(node, request.to_dict())
+            return True
+
+        if self.id == request.node_id:
+            request.receive(self, node)
+            return True
+
+    def handle_new_message(self, node: NodeConnection, data: dict):
+        msg = message_lookup(data)
 
         if msg is False:
             return
@@ -153,6 +206,7 @@ class Node(Thread):
 
         # Propagating message to other nodes
         self.send_to_nodes(data, exclude=[node])
+        return True
 
     def run(self):
         while not self.terminate_flag.is_set():

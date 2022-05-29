@@ -1,27 +1,37 @@
-import time
+from tangle.messages import MessageBase
+from utils.pow import get_raw_hash_result
 
-from tangle import Signed
 
+class Request(MessageBase):
+    def __init__(self, *, response: dict = None, **kwargs):
+        super().__init__(**kwargs)
 
-class Request(Signed):
-    """
-    value: str -- Identifier of type of message
-    """
+        self.response = response
 
-    def __init__(
-        self,
-        *,
-        node_id: str,
-        payload: dict,
-        timestamp: float = None,
-        hash: str = None,
-        signature=None
-    ):
-        self.node_id = node_id
+    def get_hash(self):
+        raw_data = self.get_raw_data()
 
-        if timestamp is None:
-            timestamp = time.time()
+        return get_raw_hash_result(raw_data)
 
-        self.timestamp = timestamp
+    def add_hash(self):
+        self.hash = self.get_hash()
 
-        self.payload = payload
+    def respond(self, client, node):
+        ...
+
+    def receive(self, client, node):
+        ...
+
+    def is_valid(self):
+        # Checking if the hash matches the data
+        if self.hash != self.get_hash():
+            return False
+
+        # Checking if the signature is valid
+        if self.is_signature_valid is False:
+            return False
+
+        return True
+
+    def to_dict(self) -> dict:
+        return {**super().to_dict(), "response": self.response}

@@ -10,9 +10,11 @@ def get_target(difficulty: int) -> int:
 def is_valid_hash(hash_str: str, target: int) -> bool:
     return int(hash_str, 16) < target
 
+def get_raw_hash_result(msg: str) -> str:
+    return sha256(msg.encode()).hexdigest()
 
 def get_hash_result(msg: str, nonce: int) -> str:
-    return sha256(f"{msg}{nonce}".encode()).hexdigest()
+    return get_raw_hash_result(f"{msg}{nonce}")
 
 
 def proof_of_work(msg: str, difficulty: int):

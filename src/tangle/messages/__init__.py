@@ -1,32 +1,11 @@
 from constants import GENESIS_MSG_DATA
 
-from .message import Message
+from .message import Message, MessageBase, generate_message_lookup
 from .new_transaction import NewTransaction
 
 message_types = (NewTransaction,)
-
 message_types_lookup = {c.value: c for c in message_types}
 
+message_lookup = generate_message_lookup(message_types_lookup)
 
-def get_message_from_data(data: dict):
-    msg_type = data.pop("value", None)
-
-    if msg_type is None:
-        return False
-
-    msg_cls = message_types_lookup.get(msg_type, None)
-
-    if msg_cls is None:
-        return False
-
-    try:
-        msg_obj = msg_cls(**data)
-
-    except Exception:
-        return False
-
-    else:
-        return msg_obj
-
-
-genesis_msg = get_message_from_data(GENESIS_MSG_DATA)
+genesis_msg = message_lookup(GENESIS_MSG_DATA)

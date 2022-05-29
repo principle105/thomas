@@ -4,30 +4,51 @@ import time
 from objsize import get_deep_size
 
 from constants import MAX_MSG_SIZE, MAX_PARENT_AGE, MAX_PARENTS
-from p2p.requests import Request
 from tangle import Signed
 from utils.pow import get_hash_result, get_target, is_valid_hash, proof_of_work
 
 
-class Message(Signed):
+def generate_message_lookup(lookup: dict):
+    def message_lookup(data: dict):
+        msg_type = data.pop("value", None)
+
+        if msg_type is None:
+            return False
+
+        msg_cls = lookup.get(msg_type, None)
+
+        if msg_cls is None:
+            return False
+
+        try:
+            msg_obj = msg_cls(**data)
+
+        except Exception:
+            return False
+
+        else:
+            return msg_obj
+
+    return message_lookup
+
+
+class MessageBase(Signed):
+    """
+    value: str -- Identifier of type of message
+    """
+
     def __init__(
         self,
         *,
         node_id: str,
         payload: dict,
-        parents: list = [],
         timestamp: float = None,
-        nonce: int = None,
         hash: str = None,
-        signature: str = None
+        signature=None
     ):
         super().__init__(hash, signature)
 
         self.node_id = node_id
-
-        self.parents = parents
-
-        self.nonce = nonce
 
         if timestamp is None:
             timestamp = time.time()
@@ -39,6 +60,38 @@ class Message(Signed):
     @property
     def address(self):
         return self.node_id
+
+    def get_raw_data(self) -> str:
+        return "".join(str(s) for s in self.meta_data.values())
+
+    @property
+    def meta_data(self) -> dict:
+        return {
+            "node_id": self.node_id,
+            "value": self.value,
+            "payload": self.payload,
+            "timestamp": self.timestamp,
+        }
+
+    def to_dict(self) -> dict:
+        return {
+            **self.meta_data,
+            "hash": self.hash,
+            "signature": self.signature,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(*data)
+
+
+class Message(MessageBase):
+    def __init__(self, *, parents: list = [], nonce: int = None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.parents = parents
+
+        self.nonce = nonce
 
     def update_state(self, tangle):
         """Updates the tangle with a message"""
@@ -128,27 +181,9 @@ class Message(Signed):
 
         self.hash, self.nonce = proof_of_work(raw_data, difficulty)
 
-    def get_raw_data(self) -> str:
-        return "".join(str(s) for s in self.meta_data.values())
-
     @property
-    def meta_data(self):
-        return {
-            "node_id": self.node_id,
-            "value": self.value,
-            "payload": self.payload,
-            "parents": self.parents,
-            "timestamp": self.timestamp,
-        }
+    def meta_data(self) -> dict:
+        return {**super().meta_data, "parents": self.parents}
 
     def to_dict(self) -> dict:
-        return {
-            **self.meta_data,
-            "nonce": self.nonce,
-            "hash": self.hash,
-            "signature": self.signature,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(*data)
+        return {**super().to_dict(), "nonce": self.nonce}
