@@ -166,7 +166,7 @@ def send(tangle, node):
 
     msg.sign(node.wallet)
 
-    if msg.is_valid(tangle) is False:
+    if msg.is_valid(tangle) is not True:
         return Send.fail("Invalid transaction")
 
     tangle.add_msg(msg)

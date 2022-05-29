@@ -165,7 +165,7 @@ class Node(Thread):
             self.nodes_outbound.remove(node)
 
     def message_from_node(self, node: NodeConnection, data: dict):
-        if self.handle_new_request(node, data) is None:
+        if self.handle_new_request(node, data):
             return
 
         self.handle_new_message(node, data)
@@ -199,6 +199,10 @@ class Node(Thread):
 
         if is_valid is False:
             return
+
+        if is_valid is not True:
+            # TODO: Request missing parents from other nodes
+            ...
 
         if self.tangle.get_msg(msg.hash) is None:
             # Adding the message to the tangle if it doesn't exist yet

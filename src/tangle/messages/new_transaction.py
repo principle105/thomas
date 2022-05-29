@@ -15,6 +15,8 @@ class NewTransaction(Message):
         tangle.state.add_transaction(self)
 
     def is_payload_valid(self, tangle) -> bool:
+        # TODO: not working with sync check
+
         # Transaction form is valid
         try:
             t = self.get_transaction()

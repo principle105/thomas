@@ -10,6 +10,8 @@ from utils.pow import get_hash_result, get_target, is_valid_hash, proof_of_work
 
 def generate_message_lookup(lookup: dict):
     def message_lookup(data: dict):
+        data = data.copy()
+
         msg_type = data.pop("value", None)
 
         if msg_type is None:
@@ -23,7 +25,7 @@ def generate_message_lookup(lookup: dict):
         try:
             msg_obj = msg_cls(**data)
 
-        except Exception:
+        except Exception as e:
             return False
 
         else:
@@ -97,7 +99,7 @@ class Message(MessageBase):
         """Updates the tangle with a message"""
         ...
 
-    def is_valid(self, tangle, depth=1):
+    def is_valid(self, tangle, depth=2):
         # Check if the fields are the correct types and fall within the correct ranges
         data = self.to_dict()
 
@@ -151,21 +153,29 @@ class Message(MessageBase):
         if self.is_payload_valid(tangle) is False:
             return False
 
+        parent_range = range(0, MAX_PARENT_AGE + 1)
+
+        invalid_parents = {}
+
         # Checking the amount, validity and age of the parents
         for _ in range(depth):
             if len(self.parents) > MAX_PARENTS:
                 return False
 
             for p in self.parents:
-                p_msg = tangle.get_msg(p)
-
                 # The validity of the parents is known because they are valid if on the tangle
 
-                if p_msg.hash != genesis_msg.hash:
-                    if math.ceil(self.timestamp - p_msg.timestamp) not in range(
-                        0, MAX_PARENT_AGE + 1
-                    ):
-                        return False
+                p_msg = tangle.get_msg(p)
+
+                # Validating the parent's timestamp if it's not the genesis
+                if p_msg is None or (
+                    math.ceil(self.timestamp - p_msg.timestamp) not in parent_range
+                    and p_msg.hash != genesis_msg.hash
+                ):
+                    invalid_parents[p_msg.hash] = p_msg
+
+        if invalid_parents:
+            return invalid_parents
 
         return True
 
