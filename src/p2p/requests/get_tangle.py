@@ -1,8 +1,8 @@
 from .request import Request
 
 
-class GetMessage(Request):
-    value = "request-tangle"
+class GetMsgs(Request):
+    value = "get-msgs"
 
     def respond(self, client, node):
         ...

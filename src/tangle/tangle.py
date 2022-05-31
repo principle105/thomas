@@ -18,7 +18,7 @@ class TangleState:
     """Keeps track of the tangle's current state"""
 
     def __init__(self):
-        self._tips = {}  # hash: timestamp
+        self.tips = {}  # hash: timestamp
         self.wallets = {}  # address: balance
 
     def add_transaction(self, msg: NewTransaction):
@@ -36,17 +36,19 @@ class TangleState:
         current_time = time.time()
 
         # Purging tips that are too old
-        self._tips = {
-            h: t for h, t in self._tips.items() if t + MAX_PARENT_AGE >= current_time
+        self.tips = {
+            h: t
+            for h, t in self.tips.items()
+            if t + MAX_PARENT_AGE >= current_time and h != genesis_msg.hash
         }
 
-        return list(self._tips.keys())
+        return list(self.tips.keys())
 
     def select_tips(self):
         tips = self.get_tips()
 
         if tips == []:
-            return genesis_msg.hash
+            return [genesis_msg.hash]
 
         amt = min(len(tips), MAX_PARENTS)
 
@@ -102,11 +104,17 @@ class Tangle:
 
         return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
 
-    def get_msg(self, hash_str: str) -> Message:
-        if hash_str in self.graph:
-            return self.graph.nodes(data=True)[hash_str]["data"]
+    def get_children(self, hash_str: str) -> list[Message]:
+        if hash_str not in self.graph:
+            return
 
-        return
+        return [n for n in self.graph.neighbors(hash_str)]
+
+    def get_msg(self, hash_str: str) -> Message:
+        if hash_str not in self.graph:
+            return
+
+        return self.graph.nodes(data=True)[hash_str]["data"]
 
     def add_msg(self, msg: Message):
         self.graph.add_node(msg.hash, data=msg)
@@ -116,10 +124,10 @@ class Tangle:
         for p in msg.parents:
             self.graph.add_edge(p, msg.hash)
 
-            if p in self.state._tips:
-                del self.state._tips[p]
+            if p in self.state.tips:
+                del self.state.tips[p]
 
-            self.state._tips[msg.hash] = msg.timestamp
+        self.state.tips[msg.hash] = msg.timestamp
 
     def save(self):
         with open(TANGLE_PATH, "wb") as f:

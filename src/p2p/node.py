@@ -12,7 +12,7 @@ from tangle.messages import message_lookup
 from wallet import Wallet
 
 from .node_connection import NodeConnection
-from .requests import DiscoverPeers, request_lookup
+from .requests import DiscoverPeers, GetMsgs, request_lookup
 
 KNOWN_PEERS_PATH = f"{STORAGE_DIRECTORY}/known_peers.json"
 
@@ -99,7 +99,7 @@ class Node(Thread):
     def create_message(self, msg_cls, payload: dict):
         return msg_cls(node_id=self.id, payload=payload)
 
-    def create_request(self, request_cls, payload: dict = None):
+    def create_request(self, request_cls, payload: dict = {}):
         request = request_cls(node_id=self.id, payload=payload)
 
         request.add_hash()
@@ -182,34 +182,43 @@ class Node(Thread):
         if request.response is None:
             request.respond(self, node)
 
-            self.send_to_node(node, request.to_dict())
+            if request.response:
+                self.send_to_node(node, request.to_dict())
             return True
 
         if self.id == request.node_id:
             request.receive(self, node)
             return True
 
-    def handle_new_message(self, node: NodeConnection, data: dict):
+    def request_msgs(self, msgs: list):
+        request = self.create_request(GetMsgs, {"tips": list(msgs)})
+
+        self.send_to_nodes(request.to_dict())
+
+    def handle_new_message(self, node: NodeConnection, data: dict, propagate=True):
         msg = message_lookup(data)
 
         if msg is False:
             return
 
-        is_valid = msg.is_valid(self.tangle)
+        result = msg.is_valid(self.tangle)
 
-        if is_valid is False:
+        if result is False:
             return
 
-        if is_valid is not True:
+        if result is not True:
             # TODO: Request missing parents from other nodes
-            ...
+            self.request_msgs(result)
+            return True
 
         if self.tangle.get_msg(msg.hash) is None:
             # Adding the message to the tangle if it doesn't exist yet
             self.tangle.add_msg(msg)
 
-        # Propagating message to other nodes
-        self.send_to_nodes(data, exclude=[node])
+            # Propagating message to other nodes
+            if propagate:
+                self.send_to_nodes(data, exclude=[node])
+
         return True
 
     def run(self):
