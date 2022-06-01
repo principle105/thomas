@@ -33,6 +33,7 @@ class TangleState:
         self.wallets[t.receiver] = receiver_bal + t.amt
 
     def get_tips(self):
+        # TODO: keep genesis in tip pool until it has two references
         current_time = time.time()
 
         # Purging tips that are too old
@@ -94,6 +95,9 @@ class Tangle:
         def _in_window(v):
             m = v[1]
 
+            if m is None:
+                return False
+
             return (
                 m.node_id == msg.node_id
                 and m.timestamp > msg.timestamp - TIME_WINDOW
@@ -114,7 +118,18 @@ class Tangle:
         if hash_str not in self.graph:
             return
 
-        return self.graph.nodes(data=True)[hash_str]["data"]
+        return self.graph.nodes(data="data")[hash_str]
+
+    def get_msgs(self, hash_strs: list[str]) -> list[Message]:
+        node_data = self.graph.nodes(data="data")
+
+        data = {}
+
+        for h in hash_strs:
+            if h in self.graph:
+                data[h] = node_data[h]
+
+        return data
 
     def add_msg(self, msg: Message):
         self.graph.add_node(msg.hash, data=msg)

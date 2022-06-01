@@ -151,7 +151,7 @@ class Message(MessageBase):
 
         parent_range = range(0, MAX_PARENT_AGE + 1)
 
-        invalid_parents = set()
+        invalid_parents = []
 
         # Checking the amount, validity and age of the parents
         for _ in range(depth):
@@ -168,10 +168,11 @@ class Message(MessageBase):
                     math.ceil(self.timestamp - p_msg.timestamp) not in parent_range
                     and p_msg.hash != genesis_msg.hash
                 ):
-                    invalid_parents.add(p)
+                    if p not in invalid_parents:
+                        invalid_parents.append(p)
 
         if invalid_parents:
-            return invalid_parents | {self.hash}
+            return invalid_parents + [self.hash]
 
         # Checking if the payload is valid
         if self.is_payload_valid(tangle) is False:

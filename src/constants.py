@@ -13,6 +13,10 @@ MAX_PARENTS = 6
 MAX_PARENT_AGE = 60 * 60
 MAX_MSG_SIZE = 4096  # bytes
 
+# Requests
+MAX_TIPS_REQUESTED = 10
+REQUEST_CHILDREN_AFTER = 60 * 60 * 24 # s
+
 # Currency details
 MINIMUM_SEND_AMT = 1
 

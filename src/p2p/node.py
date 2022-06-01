@@ -7,6 +7,7 @@ import time
 from threading import Event, Thread
 
 from config import STORAGE_DIRECTORY
+from constants import REQUEST_CHILDREN_AFTER
 from tangle import Tangle
 from tangle.messages import message_lookup
 from wallet import Wallet
@@ -190,8 +191,8 @@ class Node(Thread):
             request.receive(self, node)
             return True
 
-    def request_msgs(self, msgs: list):
-        request = self.create_request(GetMsgs, {"tips": list(msgs)})
+    def request_msgs(self, msgs: list, history=False):
+        request = self.create_request(GetMsgs, {"tips": list(msgs), "history": history})
 
         self.send_to_nodes(request.to_dict())
 
@@ -207,8 +208,15 @@ class Node(Thread):
             return
 
         if result is not True:
-            # TODO: Request missing parents from other nodes
-            self.request_msgs(result)
+            age = time.time() - msg.timestamp
+
+            if age >= REQUEST_CHILDREN_AFTER:
+                payload = list(self.tangle.state.tips.keys())
+                self.request_msgs(payload, True)
+
+            else:
+                self.request_msgs(result)
+
             return True
 
         if self.tangle.get_msg(msg.hash) is None:
