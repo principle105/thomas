@@ -59,14 +59,14 @@ class TangleState:
 
 
 class Tangle:
-    def __init__(self, graph: nx.Graph = None, state: TangleState = None):
+    def __init__(self, graph: nx.DiGraph = None, state: TangleState = None):
         if state is None:
             state = TangleState()
 
         self.state = state
 
         if graph is None:
-            graph = nx.Graph()
+            graph = nx.DiGraph()
 
         self.graph = graph
 
@@ -124,7 +124,8 @@ class Tangle:
         for p in msg.parents:
             self.graph.add_edge(p, msg.hash)
 
-            if p in self.state.tips:
+            # Only remove if it has more than one reference (prevents from just being a linked list)
+            if p in self.state.tips and self.graph.in_degree(msg.hash) > 1:
                 del self.state.tips[p]
 
         self.state.tips[msg.hash] = msg.timestamp
