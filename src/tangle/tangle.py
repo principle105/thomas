@@ -40,7 +40,7 @@ class TangleState:
         self.tips = {
             h: t
             for h, t in self.tips.items()
-            if t + MAX_PARENT_AGE >= current_time and h != genesis_msg.hash
+            if t + MAX_PARENT_AGE >= current_time or h == genesis_msg.hash
         }
 
         return list(self.tips.keys())
