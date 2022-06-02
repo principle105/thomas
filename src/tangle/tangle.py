@@ -106,7 +106,7 @@ class Tangle:
 
         msg_count = len(list(filter(_in_window, self.graph.nodes(data="data"))))
 
-        return BASE_DIFFICULTY + math.floor(GAMMA * msg_count)
+        return BASE_DIFFICULTY + int(GAMMA * msg_count)
 
     def get_children(self, hash_str: str) -> list[Message]:
         if hash_str not in self.graph:

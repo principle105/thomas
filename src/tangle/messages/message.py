@@ -158,6 +158,8 @@ class Message(MessageBase):
             if len(self.parents) > MAX_PARENTS:
                 return False
 
+            # TODO: make sure graph is still acyclic
+
             for p in self.parents:
                 # The validity of the parents is known because they are valid if on the tangle
 

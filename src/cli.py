@@ -100,6 +100,26 @@ def node_stats(_, node):
     )
 
 
+def tangle_stats(tangle, _):
+    msg_amt = tangle.graph.number_of_nodes()
+
+    t_amt = 0
+    sent = 0
+
+    for _, m in tangle.graph.nodes(data="data"):
+        if m.value == NewTransaction.value:
+            t = m.get_transaction()
+            sent += t.amt
+
+            t_amt += 1
+
+    Send.important(
+        f"Total Messages: {msg_amt}\n"
+        f"Total Transactions: {t_amt}\n"
+        f"Total Sent: {sent}"
+    )
+
+
 def view_msg(tangle, _):
     msg_hash = inquirer.text(
         message="Message Hash:",
@@ -239,6 +259,7 @@ def start():
         "View Balance": view_balance,
         "View Message": view_msg,
         "Node Stats": node_stats,
+        "Tangle Stats": tangle_stats,
         "Connect": connect,
     }
 
