@@ -262,7 +262,7 @@ class Node(Thread):
                 logging.debug("Connection timed out")
 
             except Exception as e:
-                raise e
+                logging.exception(e)
 
             time.sleep(0.01)
 

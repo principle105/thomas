@@ -70,8 +70,10 @@ class NodeConnection(Thread):
                 logging.debug("Node timeout")
 
             except Exception as e:
+                if not isinstance(ConnectionResetError, e):
+                    logging.exception(e)
+
                 self.terminate_flag.set()
-                logging.exception(e)
 
             if chunk != b"":
                 buffer += chunk

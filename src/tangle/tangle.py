@@ -1,4 +1,3 @@
-import math
 import os
 import pickle
 import random
@@ -33,7 +32,6 @@ class TangleState:
         self.wallets[t.receiver] = receiver_bal + t.amt
 
     def get_tips(self):
-        # TODO: keep genesis in tip pool until it has two references
         current_time = time.time()
 
         # Purging tips that are too old
